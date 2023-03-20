@@ -1,11 +1,11 @@
-using WorkerService1;
-using WorkerService2;
 
 IHost host = Host.CreateDefaultBuilder(args)
 .ConfigureServices(services =>
 {
-    services.AddHostedService<Worker>();
+    services.AddHostedService<Generator>();
     services.AddHostedService<Receiver>();
+    services.AddHostedService<Service>();
+    //services.AddSingleton<ICounter, Singleton>();
 })
 .Build();
 
