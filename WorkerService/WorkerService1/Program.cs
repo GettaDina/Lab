@@ -1,12 +1,18 @@
-
+using WorkerService1;
 IHost host = Host.CreateDefaultBuilder(args)
 .ConfigureServices(services =>
 {
+    var appSettings = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
+    services.Configure<AppSettings>(appSettings.GetSection("Info"));
     services.AddHostedService<Generator>();
     services.AddHostedService<Receiver>();
-    services.AddHostedService<Service>();
-    //services.AddSingleton<ICounter, Singleton>();
 })
 .Build();
 
 await host.RunAsync();
+
+public class AppSettings
+{
+    public string? Host { get; set; }
+    public int Port { get; set; }
+}

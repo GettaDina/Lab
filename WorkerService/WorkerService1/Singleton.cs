@@ -1,70 +1,29 @@
-﻿using System.Globalization;
-namespace WorkerService1
+﻿namespace WorkerService1
 {
     public class Singleton
     {
-        private static Singleton? _instance;
+        public static Singleton Instance => _instance.Value;
+        public readonly Dictionary<Lbs, Point> Dictionary = new();
 
-        public List<LBS> List = new List<LBS>();
+        private static readonly Lazy<Singleton> _instance =
+            new(() => new Singleton());
         public Singleton()
         {
-            var sr = File.OpenText("LBS.txt");
-            string? line;
-            LBS lbs = new LBS();
-
-            while ((line = sr.ReadLine()) != null)
+            using var sr = File.OpenText("LBS.txt");
+            while (sr.ReadLine() is { } line)
             {
                 int j = 0;
-                if (!TryParseInt(line, ref j, out var mcc) ||
-                    !TryParseInt(line, ref j, out var mnc) ||
-                    !TryParseInt(line, ref j, out var lac) ||
-                    !TryParseInt(line, ref j, out var cid) ||
-                    !TryParseDouble(line, ref j, out var lat) ||
-                    !TryParseDouble(line, ref j, out var lng))
+                if (!Helper.TryParseInt(line, ref j, out var mcc) ||
+                    !Helper.TryParseInt(line, ref j, out var mnc) ||
+                    !Helper.TryParseInt(line, ref j, out var lac) ||
+                    !Helper.TryParseInt(line, ref j, out var cid) ||
+                    !Helper.TryParseDouble(line, ref j, out var lat) ||
+                    !Helper.TryParseDouble(line, ref j, out var lng))
                 {
                     continue;
-                }
-
-                lbs.Set(mcc, mnc, lac, cid, lat, lng);
-                List.Add(lbs);
+                } 
+                Dictionary.Add(new Lbs(mcc, mnc, lac, cid), new Point(lat, lng));
             }
         }
-
-        public static Singleton Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = new Singleton();
-                }
-
-                return _instance;
-            }
-        }
-        public static bool TryParseInt(string line, ref int curr, out int value)
-        {
-            int next = line.IndexOf(',', curr);
-            if (!int.TryParse(line.AsSpan()[curr..next], out value))
-                return false;
-            curr = next + 1;
-            return true;
-        }
-
-        public static bool TryParseDouble(string line, ref int curr, out double value)
-        {
-            int next = line.IndexOf(',', curr);
-            if (next == -1)
-                next = line.Length;
-            if (!double.TryParse(line.AsSpan()[curr..next], Style, Format, out value))
-                return false;
-            curr = next + 1;
-            return true;
-        }
-
-        private static readonly NumberFormatInfo Format = NumberFormatInfo.InvariantInfo;
-        private static readonly NumberStyles Style = NumberStyles.Number;
     }
 }
-
-

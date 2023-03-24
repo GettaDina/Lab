@@ -1,57 +1,56 @@
 ﻿using System.Net.Sockets;
 using System.Net;
 using System.Text;
-using WorkerService1;
-public class Receiver : BackgroundService
+using Microsoft.Extensions.Options;
+
+namespace WorkerService1
 {
-    private readonly ILogger<Generator> _logger;
-    private readonly UdpClient _udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 22222));
-    private Dictionary<LBS, PointD> _dictionary = new Dictionary<LBS, PointD>();
-    public Receiver(ILogger<Generator> logger)
+    public class Receiver : BackgroundService
     {
-        _logger = logger;
-    }
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        try
+        private readonly AppSettings _config;
+        public Receiver(IOptions<AppSettings> config, ILogger<Receiver> logger)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            _config = config.Value;
+            _logger = logger;
+        }
+        private readonly ILogger<Receiver> _logger;
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            try
             {
-
-                var result = await _udpClient.ReceiveAsync(stoppingToken).ConfigureAwait(false);
-                var message = Encoding.UTF8.GetString(result.Buffer);
-                int j = 0;
-                if (!Singleton.TryParseInt(message, ref j, out var sat) ||
-                    !Singleton.TryParseDouble(message, ref j, out var lng) ||
-                    !Singleton.TryParseDouble(message, ref j, out var lat) ||
-                    !Singleton.TryParseInt(message, ref j, out var mcc) ||
-                    !Singleton.TryParseInt(message, ref j, out var mnc) ||
-                    !Singleton.TryParseInt(message, ref j, out var lac) ||
-                    !Singleton.TryParseInt(message, ref j, out var cid) ||
-                    !Singleton.TryParseDouble(message, ref j, out var lat2) ||
-                    !Singleton.TryParseDouble(message, ref j, out var lng2))
+                using UdpClient udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, _config.Port));
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    continue;
+                    var result = await udpClient.ReceiveAsync(stoppingToken).ConfigureAwait(false);
+                    var message = Encoding.UTF8.GetString(result.Buffer);
+                    //int j = 0;
+                    //if (!Helper.TryParseInt(message, ref j, out var sat) ||
+                    //    !Helper.TryParseDouble(message, ref j, out var lng) ||
+                    //    !Helper.TryParseDouble(message, ref j, out var lat) ||
+                    //    !Helper.TryParseInt(message, ref j, out var mcc) ||
+                    //    !Helper.TryParseInt(message, ref j, out var mnc) ||
+                    //    !Helper.TryParseInt(message, ref j, out var lac) ||
+                    //    !Helper.TryParseInt(message, ref j, out var cid) ||
+                    //    !Helper.TryParseDouble(message, ref j, out var lat2) ||
+                    //    !Helper.TryParseDouble(message, ref j, out var lng2))
+                    //{
+                    //    continue;
+                    //}
+                    _logger.LogInformation(message);
                 }
-
-                LBS lbs = new LBS();
-                lbs.Set(mcc, mnc, lac, cid, lat2, lng2);
-                PointD pointD = new PointD();
-                pointD.Set(sat, lat, lng);
-                //_dictionary.Add(lbs, pointD);
-                _logger.LogInformation(message);
             }
-            _udpClient.Dispose();
+
+            catch (OperationCanceledException)
+            {
+            }
+
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
-        catch (Exception e)
-        {
-            if (stoppingToken.IsCancellationRequested)
-                throw new OperationCanceledException();
-            Console.WriteLine(e);
-            throw;
-        }
-        
     }
 }
+
 
 
