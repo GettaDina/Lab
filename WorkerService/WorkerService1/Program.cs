@@ -4,6 +4,7 @@ IHost host = Host.CreateDefaultBuilder(args)
 {
     var appSettings = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
     services.Configure<AppSettings>(appSettings.GetSection("Info"));
+    services.AddSingleton<LbsService>();
     services.AddHostedService<Generator>();
     services.AddHostedService<Receiver>();
 })

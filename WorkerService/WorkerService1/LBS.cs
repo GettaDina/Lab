@@ -1,16 +1,20 @@
 ﻿namespace WorkerService1;
-public struct Lbs
+public readonly struct Lbs
 {
-    public int Mcc;
-    public int Mnc;
-    public int Lac;
-    public int Cid;
+    private readonly int _mcc;
+    private readonly int _mnc;
+    private readonly int _lac;
+    private readonly int _cid;
     public Lbs(int mcc, int mnc, int lac, int cid)
     {
-        Mcc = mcc;
-        Mnc = mnc;
-        Lac = lac;
-        Cid = cid;
+        _mcc = mcc;
+        _mnc = mnc;
+        _lac = lac;
+        _cid = cid;
+    }
+    public override string ToString()
+    {
+        return $"{_mcc},{_mnc},{_lac},{_cid}";
     }
 }
 

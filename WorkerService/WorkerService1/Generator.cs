@@ -2,84 +2,59 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.Options;
-
 namespace WorkerService1
 {
     public class Generator : BackgroundService
     {
-        private readonly Singleton _sing = Singleton.Instance;
-        private readonly AppSettings _config;
-        public Generator(IOptions<AppSettings> config)
+        private readonly LbsService _lbsService;
+        private readonly IPEndPoint _ep;
+        private readonly List<string> _list = new();
+        public Generator(IOptions<AppSettings> config, LbsService lbs)
         {
-            _config = config.Value;
+            _lbsService = lbs;
+            _ep = new IPEndPoint(IPAddress.Parse(config.Value.Host!), config.Value.Port);
         }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                using var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                if (IPAddress.TryParse(_config.Host, out var ip))
+                try
                 {
-                    var ep = new IPEndPoint(ip, _config.Port);
-                    while (!stoppingToken.IsCancellationRequested)
+                    using var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                    using StreamReader sr = File.OpenText("Point.txt");
+                    while (await sr.ReadLineAsync() is { } line)
                     {
-                        using var sr = File.OpenText("Point.txt");
-                        while (await sr.ReadLineAsync() is { } line)
+                        var j = 0;
+
+                        if (
+                            Helper.TryParseDouble(line, ref j, out var lng) &&
+                            Helper.TryParseDouble(line, ref j, out var lat))
                         {
-                            var j = 0;
-
-                            if (Helper.TryParseDateTime(line, ref j, out var time) && 
-                                Helper.TryParseInt(line, ref j, out var sat) &&
-                                Helper.TryParseDouble(line, ref j, out var lng) &&
-                                Helper.TryParseDouble(line, ref j, out var lat))
-                            {
-                                FindCeil(lat, lng, out var lbs);
-                                if (sat < 3)
-                                {
-                                    if (TryGetCeil(lbs, out var point))
-                                    {
-                                        lat = point.Lat;
-                                        lng = point.Lng;
-                                    }
-                                }
-
-                                await s.SendToAsync(Encoding.ASCII.GetBytes(new PointD(time, sat, lat, lng, lbs.Mcc, lbs.Mnc, lbs.Lac, lbs.Cid).ToString()), SocketFlags.None, ep);
-                            }
+                            _lbsService.FindCeil(lat, lng, out var lbs);
+                            _list.Add($"{lbs},{line},{15}");
+                            _list.Add($"{lbs},{line},{0}");
                         }
-                        await Task.Delay(1000, stoppingToken);
                     }
+
+                    foreach (var t in _list)
+                    {
+                        await s.SendToAsync(Encoding.ASCII.GetBytes(t), SocketFlags.None, _ep);
+                    }
+
+                    await Task.Delay(1000, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
                 }
             }
-            catch (OperationCanceledException)
-            {
-            }
-
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-            }
         }
-        private void FindCeil(double lat, double lng, out Lbs lbs)
-        {
-            var numLbs = 0;
-            var res = double.MaxValue;
-
-            for (var i = 0; i < _sing.Dictionary.Count; i++)
-            {
-                var current = Math.Pow(_sing.Dictionary.ElementAt(i).Value.Lat - lat, 2)
-                           + Math.Pow(_sing.Dictionary.ElementAt(i).Value.Lng - lng, 2);
-                if (!(current > res)) continue;
-                res = current;
-                numLbs = i;
-            }
-
-            lbs = _sing.Dictionary.ElementAt(numLbs).Key;
-        }
-
-        private bool TryGetCeil(Lbs lbs, out Point point)
-        {
-            return _sing.Dictionary.TryGetValue(lbs, out point);
-        }
+        
     }
 }
 

@@ -1,29 +1,36 @@
 ﻿namespace WorkerService1;
 public struct PointD
 {
-    public DateTime Time;
-    public int Sat;
+    public Lbs Lbs;
     public double Lat;
     public double Lng;
-    public int Mcc;
-    public int Mnc;
-    public int Lac;
-    public int Cid;
-
-    public PointD(DateTime time, int sat, double lat, double lng, int mcc, int mnc, int lac, int cid)
-    {
-        Time = time;
-        Sat = sat;
-        Lat = lat;
-        Lng = lng;
-        Mcc = mcc;
-        Mnc = mnc;
-        Lac = lac;
-        Cid = cid;
-    }
-
+    public DateTime Time;
+    public int Sat;
     public override string ToString()
     {
-        return Time + " " + Sat + " " + Lat + " " + Lng + " " + Mcc + " " + Mnc + " " + Lac + " " + Cid;
+        return $"{Lbs},{Lat},{Lng},{Time.ToString(@"hh\:mm\:ss")},{Sat}";
+    }
+
+    public static bool TryParse(string str, out PointD point)
+    {
+        var j = 0;
+        if (Helper.TryParseInt(str, ref j, out var mcc) &&
+            Helper.TryParseInt(str, ref j, out var mnc) &&
+            Helper.TryParseInt(str, ref j, out var lac) &&
+            Helper.TryParseInt(str, ref j, out var cid) &&
+            Helper.TryParseDouble(str, ref j, out var lng) &&
+            Helper.TryParseDouble(str, ref j, out var lat) &&
+            Helper.TryParseDateTime(str, ref j, out var time) && 
+            Helper.TryParseInt(str, ref j, out var sat)) 
+        {
+            point.Lbs = new Lbs(mcc, mnc, lac, cid);
+            point.Lat = lat;
+            point.Lng = lng;
+            point.Time = time.ToUniversalTime();
+            point.Sat = sat;
+            return true;
+        }
+        point = default; 
+        return false;
     }
 }

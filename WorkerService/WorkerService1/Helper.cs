@@ -7,14 +7,19 @@ namespace WorkerService1
         public static bool TryParseDateTime(string line, ref int current, out DateTime value)
         {
             var next = line.IndexOf(',', current);
+            if (next == -1)
+                next = line.Length;
             if (!DateTime.TryParse(line.AsSpan()[current..next], out value))
                 return false;
+            value = value.ToUniversalTime();
             current = next + 1;
             return true;
         }
         public static bool TryParseInt(string line, ref int current, out int value)
         {
             var next = line.IndexOf(',', current);
+            if (next == -1)
+                next = line.Length;
             if (!int.TryParse(line.AsSpan()[current..next], out value))
                 return false;
             current = next + 1;
